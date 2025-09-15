@@ -1,0 +1,54 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.5.5'
+	id 'io.spring.dependency-management' version '1.1.7'
+	// 1. Add the JavaFX plugin
+	id 'org.openjfx.javafxplugin' version '0.1.0'
+}
+
+group = 'com.org.pp'
+version = '0.0.1-SNAPSHOT'
+description = 'Demo project for Spring Boot'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+// 2. Add this configuration block for the JavaFX plugin
+javafx {
+	version = "22" // Use a specific, recent version compatible with Java 21
+	modules = [ 'javafx.controls', 'javafx.fxml' ]
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter'
+	// NOTE: This is not the official Gemini client. See insight below.
+	implementation "com.google.genai:google-genai:1.0.0"
+	implementation 'net.java.dev.jna:jna-platform:5.13.0'
+	implementation 'com.google.protobuf:protobuf-java:3.25.3'
+
+	// 3. The JavaFX dependencies are now managed by the plugin,
+	// so they have been removed from this section.
+
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}

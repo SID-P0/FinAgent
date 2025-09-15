@@ -1,0 +1,5 @@
+src/main/resources/secrets.properties
+/debug_screenshots
+/build
+/.gradle
+.idea
