@@ -86,7 +86,7 @@ public class JavaFxApplication extends Application {
 
         // --- Scene and Stage Setup ---
         Scene scene = new Scene(root, 600, 400);
-        stage.setTitle("FinAgent LLM Client");
+        stage.setTitle("BridgeConnect");
         stage.setScene(scene);
         stage.show();
     }

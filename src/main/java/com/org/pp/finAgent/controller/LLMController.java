@@ -32,20 +32,15 @@ public class LLMController {
         String modelName = "gemini-2.5-flash";
 
         // Build the request content with both a text part and an image part.
-        Part imagePart = Part.builder()
+        Part inputPart = Part.builder()
                 .inlineData(
                         Blob.builder()
                                 .data(ScreenCapture.captureAsBytes())
                                 .mimeType("image/png")
                                 .build())
+                .text(prompt)
                 .build();
-        Part textPart = Part.builder()
-                .text(prompt).build();
-        List<Part> allParts = new ArrayList<>();
-        allParts.add(imagePart);
-        allParts.add(textPart);
-
-        Content content = Content.builder().parts(allParts).build();
+        Content content = Content.builder().parts(List.of(inputPart)).build();
 
         return client.models.generateContent(modelName, content, null);
     }
