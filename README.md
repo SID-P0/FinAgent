@@ -9,8 +9,8 @@ Features to add
 
 Steps to run locally
 
-Add in vm options
--Djava.awt.headless=false
+1. Add in vm options
+   -Djava.awt.headless=false
 
-Create a secrets.properties and add your gemini key 
-API_KEY = .........................
+2. Create a secrets.properties and add your gemini key 
+   API_KEY = .........................
