@@ -65,7 +65,7 @@ public class JavaFxApplication extends Application {
             new Thread(() -> {
                 try {
                     // CORRECTED: Use the text-only method for this UI
-                    GenerateContentResponse response = llmService.analyzeScreen(prompt);
+                    GenerateContentResponse response = llmService.processUserPrompt(prompt);
                     final String responseText = response.text();
 
                     // Update the UI on the JavaFX Application Thread
