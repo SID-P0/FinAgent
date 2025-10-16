@@ -2,12 +2,14 @@ package com.org.pp.finAgent;
 
 import com.google.genai.types.GenerateContentResponse;
 import com.org.pp.finAgent.controller.LLMController;
+import com.org.pp.finAgent.controller.OCRController;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.Separator;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
@@ -18,82 +20,123 @@ import org.springframework.context.ConfigurableApplicationContext;
 public class JavaFxApplication extends Application {
 
     private ConfigurableApplicationContext applicationContext;
-    private LLMController llmService;
+    private LLMController llmController;
+    private OCRController ocrController;
 
     @Override
     public void init() {
         // Bootstrap the Spring Boot application context
         applicationContext = new SpringApplicationBuilder(FinAgentApplication.class).run();
-        // Get the LLMService bean from the context
-        this.llmService = applicationContext.getBean(LLMController.class);
+        // Get the service beans from the context
+        this.llmController = applicationContext.getBean(LLMController.class);
+        this.ocrController = applicationContext.getBean(OCRController.class);
     }
 
     @Override
     public void start(Stage stage) {
         // --- UI Components ---
-        Label promptLabel = new Label("Enter your command:");
-        TextField promptField = new TextField();
-        promptField.setPromptText("e.g., 'What is the capital of France?'");
+        Label llmPromptLabel = new Label("LLM Command:");
+        TextField llmPromptField = new TextField();
+        llmPromptField.setPromptText("e.g., 'What is the capital of France?'");
+        Button llmSubmitButton = new Button("Submit to LLM");
 
-        Button submitButton = new Button("Submit");
+        // --- New UI Components for OCR ---
+        Label ocrLabel = new Label("Text to Find on Screen:");
+        TextField ocrField = new TextField();
+        ocrField.setPromptText("e.g., 'invoice'");
+        Button ocrCtrlClickButton = new Button("Find & Ctrl+Click All");
 
-        Label responseLabel = new Label("Response:");
+        Label responseLabel = new Label("Response / Status:");
         TextArea responseArea = new TextArea();
         responseArea.setEditable(false);
         responseArea.setWrapText(true);
 
         // --- Layout ---
-        VBox root = new VBox(10, promptLabel, promptField, submitButton, responseLabel, responseArea);
+        VBox root = new VBox(10,
+                llmPromptLabel, llmPromptField, llmSubmitButton,
+                new Separator(), // Visually separate the two actions
+                ocrLabel, ocrField, ocrCtrlClickButton,
+                new Separator(),
+                responseLabel, responseArea
+        );
         root.setPadding(new Insets(15));
 
         // --- Event Handling ---
-        // By setting this button as the default, pressing "Enter" will trigger it.
-        submitButton.setDefaultButton(true);
+        llmSubmitButton.setDefaultButton(true);
 
-        submitButton.setOnAction(event -> {
-            String prompt = promptField.getText();
-            if (prompt == null || prompt.isBlank()) {
-                responseArea.setText("Please enter a prompt.");
-                return;
-            }
-
-            // Disable button to prevent multiple clicks
-            submitButton.setDisable(true);
-            responseArea.setText("Generating response...");
-
-            // Run the network call on a background thread
-            new Thread(() -> {
-                try {
-                    // CORRECTED: Use the text-only method for this UI
-                    GenerateContentResponse response = llmService.processUserPrompt(prompt);
-                    final String responseText = response.text();
-
-                    // Update the UI on the JavaFX Application Thread
-                    Platform.runLater(() -> {
-                        responseArea.setText(responseText);
-                        submitButton.setDisable(false);
-                    });
-
-                } catch (Exception e) {
-                    // Handle errors and update the UI
-                    Platform.runLater(() -> {
-                        responseArea.setText("Error: " + e.getMessage());
-                        submitButton.setDisable(false);
-                    });
-                }
-            }).start();
-        });
+        llmSubmitButton.setOnAction(event -> handleLlmAction(llmPromptField, responseArea, llmSubmitButton, ocrCtrlClickButton));
+        ocrCtrlClickButton.setOnAction(event -> handleOcrAction(ocrField, responseArea, llmSubmitButton, ocrCtrlClickButton));
 
         // --- Scene and Stage Setup ---
-        Scene scene = new Scene(root, 600, 400);
-        stage.setTitle("BridgeConnect");
+        Scene scene = new Scene(root, 600, 450);
+        stage.setTitle("FinAgent Control Panel");
         stage.setScene(scene);
         stage.show();
     }
 
+    private void handleLlmAction(TextField promptField, TextArea responseArea, Button... buttonsToDisable) {
+        String prompt = promptField.getText();
+        if (prompt == null || prompt.isBlank()) {
+            responseArea.setText("Please enter an LLM command.");
+            return;
+        }
+
+        setButtonsDisabled(true, buttonsToDisable);
+        responseArea.setText("Processing LLM command...");
+
+        new Thread(() -> {
+            try {
+                // Assuming processUserPrompt returns a String based on previous context
+                final GenerateContentResponse responseText = llmController.processUserPrompt(prompt);
+
+                Platform.runLater(() -> {
+                    responseArea.setText(responseText.text());
+                    setButtonsDisabled(false, buttonsToDisable);
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    responseArea.setText("Error during LLM processing: " + e.getMessage());
+                    setButtonsDisabled(false, buttonsToDisable);
+                });
+            }
+        }).start();
+    }
+
+    private void handleOcrAction(TextField ocrField, TextArea responseArea, Button... buttonsToDisable) {
+        String textToFind = ocrField.getText();
+        if (textToFind == null || textToFind.isBlank()) {
+            responseArea.setText("Please enter text to find for the OCR action.");
+            return;
+        }
+
+        setButtonsDisabled(true, buttonsToDisable);
+        responseArea.setText("Searching screen for '" + textToFind + "'...");
+
+        new Thread(() -> {
+            try {
+                final int clickCount = ocrController.findAndCtrlClickAllByTextAndColor(textToFind, "#99c3ff");
+
+                Platform.runLater(() -> {
+                    responseArea.setText("Found and Ctrl+Clicked " + clickCount + " instance(s) of '" + textToFind + "'.");
+                    setButtonsDisabled(false, buttonsToDisable);
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    responseArea.setText("Error during OCR operation: " + e.getMessage());
+                    setButtonsDisabled(false, buttonsToDisable);
+                });
+            }
+        }).start();
+    }
+
+    private void setButtonsDisabled(boolean disabled, Button... buttons) {
+        for (Button button : buttons) {
+            button.setDisable(disabled);
+        }
+    }
+
     @Override
     public void stop() {
-        // Cleanly shut down the Spring application context
         applicationContext.close();
         Platform.exit();
     }

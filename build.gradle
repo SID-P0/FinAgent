@@ -18,7 +18,7 @@ java {
 
 // 2. Add this configuration block for the JavaFX plugin
 javafx {
-	version = "22" // Use a specific, recent version compatible with Java 21
+	version = "22"
 	modules = [ 'javafx.controls', 'javafx.fxml' ]
 }
 
@@ -34,13 +34,10 @@ repositories {
 
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter'
-	// NOTE: This is not the official Gemini client. See insight below.
 	implementation "com.google.genai:google-genai:1.0.0"
 	implementation 'net.java.dev.jna:jna-platform:5.13.0'
 	implementation 'com.google.protobuf:protobuf-java:3.25.3'
-
-	// 3. The JavaFX dependencies are now managed by the plugin,
-	// so they have been removed from this section.
+	implementation 'net.sourceforge.tess4j:tess4j:5.12.0'
 
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'

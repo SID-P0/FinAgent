@@ -8,6 +8,8 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import javax.imageio.ImageIO;
 
 public class ScreenCapture {
@@ -43,7 +45,7 @@ public class ScreenCapture {
      * Private helper to perform the actual screen capture and handle errors.
      * This avoids code duplication in the public methods.
      */
-    private static BufferedImage performScreenCapture() throws AWTException, IOException {
+    public static BufferedImage performScreenCapture() throws AWTException, IOException {
         try {
             Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
             return new Robot().createScreenCapture(screenRect);
@@ -54,5 +56,23 @@ public class ScreenCapture {
                             "Please grant 'Screen Recording' permission to your IDE or Terminal in:\n" +
                             "System Settings > Privacy & Security > Screen Recording", e);
         }
+    }
+
+    public static String captureToFile() throws IOException, AWTException {
+        // 1. Perform the screen capture using the helper method to avoid duplicating code.
+        BufferedImage screenCapture = performScreenCapture();
+
+        // 2. Create a temporary file with a random name in the system's temp directory.
+        //    This is the standard, safe way to handle temporary files.
+        Path tempFile = Files.createTempFile("finagent_capture_", ".png");
+
+        // 3. Ensure the file is automatically deleted when the application exits.
+        tempFile.toFile().deleteOnExit();
+
+        // 4. Write the captured image to the temporary file.
+        ImageIO.write(screenCapture, "png", tempFile.toFile());
+
+        // 5. Return the absolute path of the created file.
+        return tempFile.toFile().getAbsolutePath();
     }
 }
