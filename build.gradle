@@ -46,6 +46,11 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
+tasks.named('bootRun') {
+	jvmArgs = ['-Djava.awt.headless=false']
+}
+
 tasks.named('test') {
 	useJUnitPlatform()
+	jvmArgs = ['-Djava.awt.headless=false']
 }
