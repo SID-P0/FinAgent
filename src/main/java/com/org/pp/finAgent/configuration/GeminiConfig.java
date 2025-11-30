@@ -15,4 +15,7 @@ public class GeminiConfig {
         return Client.builder().apiKey(API_KEY).build();
     }
 
+    public String getApiKey() {
+        return API_KEY;
+    }
 }

@@ -1,8 +1,7 @@
 package com.org.pp.finAgent;
 
-import com.google.genai.types.GenerateContentResponse;
-import com.org.pp.finAgent.controller.LLMController;
 import com.org.pp.finAgent.controller.OCRController;
+import com.org.pp.finAgent.service.AgentService;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -18,18 +17,17 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 
 public class JavaFxApplication extends Application {
-
     private ConfigurableApplicationContext applicationContext;
-    private LLMController llmController;
     private OCRController ocrController;
+    private AgentService agentService;
 
     @Override
     public void init() {
         // Bootstrap the Spring Boot application context
         applicationContext = new SpringApplicationBuilder(FinAgentApplication.class).run();
         // Get the service beans from the context
-        this.llmController = applicationContext.getBean(LLMController.class);
         this.ocrController = applicationContext.getBean(OCRController.class);
+        this.agentService = applicationContext.getBean(AgentService.class);
     }
 
     @Override
@@ -37,7 +35,7 @@ public class JavaFxApplication extends Application {
         // --- UI Components ---
         Label llmPromptLabel = new Label("LLM Command:");
         TextField llmPromptField = new TextField();
-        llmPromptField.setPromptText("e.g., 'What is the capital of France?'");
+        llmPromptField.setPromptText("e.g., 'Find and click the text invoice'");
         Button llmSubmitButton = new Button("Submit to LLM");
 
         // --- New UI Components for OCR ---
@@ -86,16 +84,19 @@ public class JavaFxApplication extends Application {
 
         new Thread(() -> {
             try {
-                // Assuming processUserPrompt returns a String based on previous context
-                final GenerateContentResponse responseText = llmController.processUserPrompt(prompt);
+                final String responseText = agentService.chatWithAgent(prompt);
 
                 Platform.runLater(() -> {
-                    responseArea.setText(responseText.text());
+                    responseArea.setText(responseText);
                     setButtonsDisabled(false, buttonsToDisable);
                 });
             } catch (Exception e) {
                 Platform.runLater(() -> {
-                    responseArea.setText("Error during LLM processing: " + e.getMessage());
+                    String errorMessage = "Error during LLM processing: " + e.getMessage();
+                    if (e.getCause() != null) {
+                        errorMessage += "\nCause: " + e.getCause().getMessage();
+                    }
+                    responseArea.setText(errorMessage);
                     setButtonsDisabled(false, buttonsToDisable);
                 });
             }
