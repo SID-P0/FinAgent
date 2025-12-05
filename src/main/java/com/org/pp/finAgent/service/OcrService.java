@@ -8,11 +8,8 @@ import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.Word;
 import org.springframework.stereotype.Service;
 
-import javax.imageio.ImageIO;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -26,48 +23,6 @@ public class OcrService {
         this.tesseract = new Tesseract();
         this.tesseract.setDatapath(tesseractConfig.getTessDataPath());
         this.tesseract.setLanguage("eng");
-    }
-
-    /**
-     * Detects specific words in an image file and returns their location and
-     * confidence.
-     *
-     * @param imagePath The path to the image file.
-     * @param findWord  The word to search for within the image.
-     * @return A list of OcrResult objects for each instance of the found word.
-     */
-    public List<OcrResult> getWordsFromImage(String imagePath, String findWord) {
-        try {
-            BufferedImage image = ImageIO.read(new File(imagePath));
-            if (image == null) {
-                throw new OcrProcessingException(
-                        "Could not read image file, it may be null or corrupted: " + imagePath);
-            }
-            // Delegate to the method that works with a BufferedImage
-            return getWordsFromImage(image, findWord);
-        } catch (IOException e) {
-            throw new OcrProcessingException("Failed to read image file at path: " + imagePath, e);
-        }
-    }
-
-    /**
-     * Detects all words in a BufferedImage and returns their location and
-     * confidence.
-     *
-     * @param image The BufferedImage to process.
-     * @return A list of OcrResult objects for every word found in the image.
-     */
-    public List<OcrResult> getAllWordsFromImage(BufferedImage image) {
-        try {
-            List<Word> words = tesseract.getWords(image, ITessAPI.TessPageIteratorLevel.RIL_WORD);
-
-            return words.stream()
-                    .filter(word -> word.getText() != null && !word.getText().trim().isEmpty())
-                    .map(word -> new OcrResult(word.getText().trim(), word.getBoundingBox(), word.getConfidence()))
-                    .collect(Collectors.toList());
-        } catch (Exception ex) {
-            throw new OcrProcessingException("An unexpected error occurred during OCR processing.", ex);
-        }
     }
 
     /**

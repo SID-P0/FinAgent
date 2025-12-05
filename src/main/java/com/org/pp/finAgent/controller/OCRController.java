@@ -30,7 +30,8 @@ public class OCRController {
     private MouseMovement mouseMovement;
 
     /**
-     * Finds a word on the screen and clicks the first instance found, regardless of confidence.
+     * Finds a word on the screen and clicks the first instance found, regardless of
+     * confidence.
      *
      * @param textToFind The text of the element to find and click.
      * @return true if an element was found and clicked, false otherwise.
@@ -53,13 +54,15 @@ public class OCRController {
             return clickOcrResult(firstResult.get(), "MOVE_AND_CLICK");
 
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "An error occurred during the find-and-click operation for text: '" + textToFind + "'", e);
+            LOGGER.log(Level.SEVERE,
+                    "An error occurred during the find-and-click operation for text: '" + textToFind + "'", e);
             return false;
         }
     }
 
     /**
-     * Finds all occurrences of text matching a specific color and performs a Ctrl+Click on each one.
+     * Finds all occurrences of text matching a specific color and performs a
+     * Ctrl+Click on each one.
      * It uses fuzzy matching for the text (e.g., "xyz" will match "xyz_asd").
      *
      * @param textToFind The text of the elements to find and multi-select.
@@ -67,7 +70,8 @@ public class OCRController {
      * @return The number of items that were successfully clicked.
      */
     public int findAndCtrlClickAllByTextAndColor(String textToFind, String hexColor) {
-        LOGGER.info("Attempting to find and Ctrl+Click all occurrences of: '" + textToFind + "' with color " + hexColor);
+        LOGGER.info(
+                "Attempting to find and Ctrl+Click all occurrences of: '" + textToFind + "' with color " + hexColor);
         int clickCount = 0;
         try {
             String screenCapturePath = ScreenCapture.captureToFile();
@@ -92,7 +96,8 @@ public class OCRController {
                 return 0;
             }
 
-            LOGGER.info("Found " + filteredResults.size() + " occurrences with matching color. Proceeding to Ctrl+Click each one.");
+            LOGGER.info("Found " + filteredResults.size()
+                    + " occurrences with matching color. Proceeding to Ctrl+Click each one.");
 
             for (OcrService.OcrResult result : filteredResults) {
                 if (clickOcrResult(result, "MOVE_AND_CTRL_CLICK")) {
@@ -107,79 +112,31 @@ public class OCRController {
             LOGGER.log(Level.WARNING, "The click operation was interrupted.", e);
             Thread.currentThread().interrupt(); // Preserve the interrupted status
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "An error occurred during the find-and-Ctrl+Click operation for text: '" + textToFind + "'", e);
+            LOGGER.log(Level.SEVERE,
+                    "An error occurred during the find-and-Ctrl+Click operation for text: '" + textToFind + "'", e);
         }
         return clickCount;
     }
 
     /**
-     * Finds all words on the screen with a specific color and performs a Ctrl+Click on each one.
-     *
-     * @param hexColor The hex color string (e.g., "#99c3ff") of the text to find.
-     * @return The number of items that were successfully clicked.
-     */
-    public int findAndCtrlClickAllByColor(String hexColor) {
-        LOGGER.info("Attempting to find and Ctrl+Click all words with color " + hexColor);
-        int clickCount = 0;
-        try {
-            String screenCapturePath = ScreenCapture.captureToFile();
-            BufferedImage image = ImageIO.read(new File(screenCapturePath));
-
-            List<OcrService.OcrResult> allWords = ocrService.getAllWordsFromImage(image);
-
-            if (allWords.isEmpty()) {
-                LOGGER.warning("Could not find any text on the screen.");
-                return 0;
-            }
-
-            Color targetColor = Color.decode(hexColor);
-
-            List<OcrService.OcrResult> filteredResults = allWords.stream()
-                    .filter(result -> isWordColor(image, result, targetColor, DEFAULT_COLOR_TOLERANCE))
-                    .collect(Collectors.toList());
-
-            if (filteredResults.isEmpty()) {
-                LOGGER.warning("Found text on screen, but none matched the color " + hexColor);
-                return 0;
-            }
-
-            LOGGER.info("Found " + filteredResults.size() + " words with matching color. Proceeding to Ctrl+Click each one.");
-
-            for (OcrService.OcrResult result : filteredResults) {
-                if (clickOcrResult(result, "MOVE_AND_CTRL_CLICK")) {
-                    clickCount++;
-                    Thread.sleep(250);
-                }
-            }
-
-        } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "An error occurred reading the screen capture image.", e);
-        } catch (InterruptedException e) {
-            LOGGER.log(Level.WARNING, "The click operation was interrupted.", e);
-            Thread.currentThread().interrupt();
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "An error occurred during the find-and-Ctrl+Click by color operation for color: '" + hexColor + "'", e);
-        }
-        return clickCount;
-    }
-
-    /**
-     * Checks if the text within a bounding box in an image likely matches a target color.
+     * Checks if the text within a bounding box in an image likely matches a target
+     * color.
      * This is a heuristic that samples a few points. It might need tuning.
      *
      * @param image       The image to check.
      * @param ocrResult   The OCR result containing the bounding box.
      * @param targetColor The color to look for.
-     * @param tolerance   The allowed color distance. A higher value means more lenient matching.
+     * @param tolerance   The allowed color distance. A higher value means more
+     *                    lenient matching.
      * @return true if a sampled pixel matches the target color.
      */
     private boolean isWordColor(BufferedImage image, OcrService.OcrResult ocrResult, Color targetColor, int tolerance) {
         Rectangle box = ocrResult.boundingBox();
         // Define sample points within the bounding box to check for color
         int[][] samplePoints = {
-                {box.x + box.width / 2, box.y + box.height / 2},   // Center
-                {box.x + box.width / 4, box.y + box.height / 2},   // Mid-left
-                {box.x + 3 * box.width / 4, box.y + box.height / 2}  // Mid-right
+                { box.x + box.width / 2, box.y + box.height / 2 }, // Center
+                { box.x + box.width / 4, box.y + box.height / 2 }, // Mid-left
+                { box.x + 3 * box.width / 4, box.y + box.height / 2 } // Mid-right
         };
 
         for (int[] point : samplePoints) {
@@ -199,7 +156,8 @@ public class OCRController {
     }
 
     /**
-     * Compares two colors based on their squared Euclidean distance in the RGB space.
+     * Compares two colors based on their squared Euclidean distance in the RGB
+     * space.
      *
      * @param c1        The first color.
      * @param c2        The second color.
@@ -220,22 +178,24 @@ public class OCRController {
 
     /**
      * Private helper to perform a click action on a given OCR result.
+     * 
      * @param target The OcrResult to click.
-     * @param action The click action to perform (e.g., "MOVE_AND_CLICK", "MOVE_AND_CTRL_CLICK").
+     * @param action The click action to perform (e.g., "MOVE_AND_CLICK",
+     *               "MOVE_AND_CTRL_CLICK").
      * @return true, as the click command was executed.
      */
     private boolean clickOcrResult(OcrService.OcrResult target, String action) {
         Rectangle boundingBox = target.boundingBox();
         LOGGER.info(String.format("Executing %s on '%s' at [x=%d, y=%d, w=%d, h=%d] with confidence %.2f%%",
-                action, target.text(), boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height, target.confidence()));
+                action, target.text(), boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height,
+                target.confidence()));
 
         int clickX = boundingBox.x + (boundingBox.width / 2);
         int clickY = boundingBox.y + (boundingBox.height / 2);
 
         String commandJson = String.format(
                 "{\"action\":\"%s\", \"x\":%d, \"y\":%d, \"button\":\"LEFT\"}",
-                action, clickX, clickY
-        );
+                action, clickX, clickY);
 
         mouseMovement.executeCommand(commandJson);
         return true;

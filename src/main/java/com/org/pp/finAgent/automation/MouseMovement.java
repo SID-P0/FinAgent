@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import java.awt.AWTException;
 import java.awt.Robot;
 import java.awt.event.InputEvent;
-import java.awt.event.KeyEvent; // Required for keyboard keys
+import java.awt.event.KeyEvent;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -17,6 +17,7 @@ public class MouseMovement {
     private static final Logger LOGGER = Logger.getLogger(MouseMovement.class.getName());
     private final Robot robot;
     private final Gson gson = new Gson();
+    private final boolean isMacOS;
 
     // A simple data class to hold the deserialized command
     private static class MouseCommand {
@@ -29,6 +30,8 @@ public class MouseMovement {
     public MouseMovement() throws AWTException {
         this.robot = new Robot();
         this.robot.setAutoDelay(50); // A small delay between robot events is good practice
+        this.isMacOS = System.getProperty("os.name").toLowerCase().contains("mac");
+        LOGGER.info("MouseMovement initialized. Detected OS: " + (isMacOS ? "macOS" : "Windows/Linux"));
     }
 
     public void executeCommand(String jsonCommand) {
@@ -49,11 +52,35 @@ public class MouseMovement {
                     }
                     break;
 
-                // New action for Ctrl+Click
+                // Cross-platform multi-select click (Ctrl on Windows/Linux, Command on macOS)
                 case "MOVE_AND_CTRL_CLICK":
                     if (isValidCoordinates(command.x, command.y) && command.button != null) {
                         robot.mouseMove(command.x, command.y);
-                        performCtrlClick(command.button);
+                        performModifierClick(command.button);
+                    }
+                    break;
+
+                // Explicit Command+Click (macOS) - uses Ctrl on Windows
+                case "MOVE_AND_CMD_CLICK":
+                    if (isValidCoordinates(command.x, command.y) && command.button != null) {
+                        robot.mouseMove(command.x, command.y);
+                        performModifierClick(command.button);
+                    }
+                    break;
+
+                // Right-click context menu (works the same on both platforms)
+                case "MOVE_AND_RIGHT_CLICK":
+                    if (isValidCoordinates(command.x, command.y)) {
+                        robot.mouseMove(command.x, command.y);
+                        performClick("RIGHT");
+                    }
+                    break;
+
+                // Double-click action
+                case "MOVE_AND_DOUBLE_CLICK":
+                    if (isValidCoordinates(command.x, command.y) && command.button != null) {
+                        robot.mouseMove(command.x, command.y);
+                        performDoubleClick(command.button);
                     }
                     break;
 
@@ -76,22 +103,43 @@ public class MouseMovement {
         }
     }
 
-    // New helper method to perform a Ctrl+Click
-    private void performCtrlClick(String button) {
+    private void performDoubleClick(String button) {
         int buttonMask = getButtonMask(button);
         if (buttonMask != -1) {
-            robot.keyPress(KeyEvent.VK_CONTROL);   // Press and hold the Control key
-            robot.mousePress(buttonMask);        // Press the mouse button
-            robot.mouseRelease(buttonMask);      // Release the mouse button
-            robot.keyRelease(KeyEvent.VK_CONTROL); // Release the Control key
+            robot.mousePress(buttonMask);
+            robot.mouseRelease(buttonMask);
+            robot.mousePress(buttonMask);
+            robot.mouseRelease(buttonMask);
         }
     }
 
+    /**
+     * Performs a modifier+click action that is cross-platform compatible.
+     * On macOS: Uses Command (⌘) key - this is the standard for multi-select
+     * On Windows/Linux: Uses Control key
+     */
+    private void performModifierClick(String button) {
+        int buttonMask = getButtonMask(button);
+        if (buttonMask != -1) {
+            int modifierKey = isMacOS ? KeyEvent.VK_META : KeyEvent.VK_CONTROL;
+            robot.keyPress(modifierKey);
+            robot.mousePress(buttonMask);
+            robot.mouseRelease(buttonMask);
+            robot.keyRelease(modifierKey);
+        }
+    }
+
+    /**
+     * Gets the appropriate button mask for the given button name.
+     * Note: On macOS, right-click can also be simulated with Ctrl+Click,
+     * but we use the standard button masks for consistency.
+     */
     private int getButtonMask(String button) {
         switch (button.toUpperCase()) {
             case "LEFT":
                 return InputEvent.BUTTON1_DOWN_MASK;
             case "RIGHT":
+                // On macOS, BUTTON3 works correctly for right-click
                 return InputEvent.BUTTON3_DOWN_MASK;
             case "MIDDLE":
                 return InputEvent.BUTTON2_DOWN_MASK;

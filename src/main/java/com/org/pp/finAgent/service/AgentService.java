@@ -8,7 +8,6 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import jakarta.annotation.PostConstruct;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -20,7 +19,6 @@ public class AgentService {
     private final OCRController ocrController;
     private Assistant assistant;
 
-    @Autowired
     public AgentService(GeminiConfig geminiConfig, OCRController ocrController) {
         this.geminiConfig = geminiConfig;
         this.ocrController = ocrController;
@@ -44,6 +42,7 @@ public class AgentService {
 
     /**
      * Interacts with the pre-configured LangChain agent.
+     * 
      * @param prompt The user's message to the agent.
      * @return The agent's response.
      */
