@@ -1,11 +1,11 @@
 package com.org.pp.finAgent.service;
 
+import com.org.pp.finAgent.configuration.TesseractConfig;
 import com.org.pp.finAgent.exception.OcrProcessingException;
 import net.sourceforge.tess4j.ITessAPI;
 import net.sourceforge.tess4j.ITesseract;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.Word;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
@@ -22,14 +22,15 @@ public class OcrService {
 
     private final ITesseract tesseract;
 
-    public OcrService(@Value("${tesseract.datapath}") String tessDataPath) {
+    public OcrService(TesseractConfig tesseractConfig) {
         this.tesseract = new Tesseract();
-        this.tesseract.setDatapath(tessDataPath);
+        this.tesseract.setDatapath(tesseractConfig.getTessDataPath());
         this.tesseract.setLanguage("eng");
     }
 
     /**
-     * Detects specific words in an image file and returns their location and confidence.
+     * Detects specific words in an image file and returns their location and
+     * confidence.
      *
      * @param imagePath The path to the image file.
      * @param findWord  The word to search for within the image.
@@ -39,7 +40,8 @@ public class OcrService {
         try {
             BufferedImage image = ImageIO.read(new File(imagePath));
             if (image == null) {
-                throw new OcrProcessingException("Could not read image file, it may be null or corrupted: " + imagePath);
+                throw new OcrProcessingException(
+                        "Could not read image file, it may be null or corrupted: " + imagePath);
             }
             // Delegate to the method that works with a BufferedImage
             return getWordsFromImage(image, findWord);
@@ -49,7 +51,8 @@ public class OcrService {
     }
 
     /**
-     * Detects all words in a BufferedImage and returns their location and confidence.
+     * Detects all words in a BufferedImage and returns their location and
+     * confidence.
      *
      * @param image The BufferedImage to process.
      * @return A list of OcrResult objects for every word found in the image.
@@ -68,8 +71,10 @@ public class OcrService {
     }
 
     /**
-     * Detects specific words in a BufferedImage and returns their location and confidence.
-     * This version uses fuzzy matching to handle cases where OCR merges words (e.g., "word1_word2").
+     * Detects specific words in a BufferedImage and returns their location and
+     * confidence.
+     * This version uses fuzzy matching to handle cases where OCR merges words
+     * (e.g., "word1_word2").
      *
      * @param image    The BufferedImage to process.
      * @param findWord The word to search for within the image.
@@ -91,8 +96,10 @@ public class OcrService {
     }
 
     /**
-     * Checks if the search text is present within the OCR-detected text by splitting
-     * the OCR text by non-alphanumeric characters. For example, if OCR reads "xyz_asd",
+     * Checks if the search text is present within the OCR-detected text by
+     * splitting
+     * the OCR text by non-alphanumeric characters. For example, if OCR reads
+     * "xyz_asd",
      * searching for "xyz" will return true.
      *
      * @param ocrText    The text detected by Tesseract.

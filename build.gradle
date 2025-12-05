@@ -49,10 +49,16 @@ dependencies {
 }
 
 tasks.named('bootRun') {
-	jvmArgs = ['-Djava.awt.headless=false']
+	jvmArgs = [
+		'-Djava.awt.headless=false',
+		'-Djna.library.path=/opt/homebrew/lib'  // Tesseract native library path (macOS Apple Silicon)
+	]
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
-	jvmArgs = ['-Djava.awt.headless=false']
+	jvmArgs = [
+		'-Djava.awt.headless=false',
+		'-Djna.library.path=/opt/homebrew/lib'  // Tesseract native library path (macOS Apple Silicon)
+	]
 }
