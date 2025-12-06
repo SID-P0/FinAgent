@@ -119,6 +119,109 @@ public class OCRController {
     }
 
     /**
+     * Finds all text on screen matching a specific color and performs a Ctrl+Click
+     * on each unique link. Words on the same line are grouped together to avoid
+     * clicking the same link multiple times.
+     *
+     * @param hexColor The hex color string (e.g., "#5A9CFD") of the text to find.
+     * @return The number of unique links that were successfully clicked.
+     */
+    public int openAllGoogleSearchLinks(String hexColor) {
+        LOGGER.info("Attempting to find and Ctrl+Click all text with color: " + hexColor);
+        int clickCount = 0;
+        try {
+            String screenCapturePath = ScreenCapture.captureToFile();
+            BufferedImage image = ImageIO.read(new File(screenCapturePath));
+
+            // Get ALL words from the screen without text filtering
+            List<OcrService.OcrResult> allWords = ocrService.getAllWordsFromImage(image);
+
+            if (allWords.isEmpty()) {
+                LOGGER.warning("Could not detect any text on the screen.");
+                return 0;
+            }
+
+            LOGGER.info("Detected " + allWords.size() + " words on screen. Filtering by color...");
+
+            Color targetColor = Color.decode(hexColor);
+
+            List<OcrService.OcrResult> filteredResults = allWords.stream()
+                    .filter(result -> isWordColor(image, result, targetColor, DEFAULT_COLOR_TOLERANCE))
+                    .collect(Collectors.toList());
+
+            if (filteredResults.isEmpty()) {
+                LOGGER.warning("Found text on screen, but none matched the color " + hexColor);
+                return 0;
+            }
+
+            LOGGER.info("Found " + filteredResults.size() + " words with matching color. Grouping by line...");
+
+            // Group words by their approximate Y position (same line = same link)
+            // Use the first word of each line group as the click target
+            List<OcrService.OcrResult> uniqueLinks = groupWordsByLine(filteredResults);
+
+            LOGGER.info("Grouped into " + uniqueLinks.size() + " unique link(s). Proceeding to Ctrl+Click each one.");
+
+            for (OcrService.OcrResult result : uniqueLinks) {
+                if (clickOcrResult(result, "MOVE_AND_CTRL_CLICK")) {
+                    clickCount++;
+                    Thread.sleep(250); // A short pause between clicks for reliability
+                }
+            }
+
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "An error occurred reading the screen capture image.", e);
+        } catch (InterruptedException e) {
+            LOGGER.log(Level.WARNING, "The click operation was interrupted.", e);
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "An error occurred during the find-and-Ctrl+Click-by-color operation.", e);
+        }
+        return clickCount;
+    }
+
+    /**
+     * Groups OCR results by their vertical position (Y coordinate).
+     * Words within a vertical tolerance are considered to be on the same line
+     * (and thus part of the same link). Returns only the first word from each line
+     * group.
+     *
+     * @param results The list of OCR results to group.
+     * @return A list containing only the first word from each line group.
+     */
+    private List<OcrService.OcrResult> groupWordsByLine(List<OcrService.OcrResult> results) {
+        if (results.isEmpty()) {
+            return results;
+        }
+
+        // Sort by Y position first, then by X position
+        List<OcrService.OcrResult> sorted = results.stream()
+                .sorted((a, b) -> {
+                    int yCompare = Integer.compare(a.boundingBox().y, b.boundingBox().y);
+                    if (yCompare != 0)
+                        return yCompare;
+                    return Integer.compare(a.boundingBox().x, b.boundingBox().x);
+                })
+                .collect(Collectors.toList());
+
+        List<OcrService.OcrResult> uniqueLinks = new java.util.ArrayList<>();
+        int lastY = -1000; // Initialize to a value that won't match
+        int lineHeightTolerance = 15; // Pixels - words within this vertical distance are on the same line
+
+        for (OcrService.OcrResult result : sorted) {
+            int currentY = result.boundingBox().y;
+
+            // If this word is not on the same line as the previous one, it's a new link
+            if (Math.abs(currentY - lastY) > lineHeightTolerance) {
+                uniqueLinks.add(result);
+                lastY = currentY;
+            }
+        }
+
+        return uniqueLinks;
+    }
+
+    /**
      * Checks if the text within a bounding box in an image likely matches a target
      * color.
      * This is a heuristic that samples a few points. It might need tuning.

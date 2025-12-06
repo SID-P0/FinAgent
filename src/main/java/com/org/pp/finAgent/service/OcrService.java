@@ -51,6 +51,27 @@ public class OcrService {
     }
 
     /**
+     * Detects ALL words in a BufferedImage and returns their location and
+     * confidence.
+     * This version does not filter by any text, returning every detected word.
+     *
+     * @param image The BufferedImage to process.
+     * @return A list of OcrResult objects for each detected word.
+     */
+    public List<OcrResult> getAllWordsFromImage(BufferedImage image) {
+        try {
+            List<Word> words = tesseract.getWords(image, ITessAPI.TessPageIteratorLevel.RIL_WORD);
+
+            return words.stream()
+                    .filter(word -> word.getText() != null && !word.getText().trim().isEmpty())
+                    .map(word -> new OcrResult(word.getText(), word.getBoundingBox(), word.getConfidence()))
+                    .collect(Collectors.toList());
+        } catch (Exception ex) {
+            throw new OcrProcessingException("An unexpected error occurred during OCR processing.", ex);
+        }
+    }
+
+    /**
      * Checks if the search text is present within the OCR-detected text by
      * splitting
      * the OCR text by non-alphanumeric characters. For example, if OCR reads

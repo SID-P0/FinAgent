@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Run FinAgent",
+            "request": "launch",
+            "mainClass": "com.org.pp.finAgent.FinAgentApplication",
+            "projectName": "FinAgent",
+            "vmArgs": "-Djava.awt.headless=false"
+        }
+    ]
+}

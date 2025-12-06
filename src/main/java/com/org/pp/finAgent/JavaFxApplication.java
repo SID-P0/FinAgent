@@ -44,6 +44,9 @@ public class JavaFxApplication extends Application {
         ocrField.setPromptText("e.g., 'invoice'");
         Button ocrCtrlClickButton = new Button("Find & Ctrl+Click All");
 
+        // --- Button for clicking all blue links ---
+        Button clickAllBlueLinksButton = new Button("Click All Blue Links");
+
         Label responseLabel = new Label("Response / Status:");
         TextArea responseArea = new TextArea();
         responseArea.setEditable(false);
@@ -55,15 +58,23 @@ public class JavaFxApplication extends Application {
                 new Separator(), // Visually separate the two actions
                 ocrLabel, ocrField, ocrCtrlClickButton,
                 new Separator(),
-                responseLabel, responseArea
-        );
+                clickAllBlueLinksButton,
+                new Separator(),
+                responseLabel, responseArea);
         root.setPadding(new Insets(15));
 
         // --- Event Handling ---
         llmSubmitButton.setDefaultButton(true);
 
-        llmSubmitButton.setOnAction(event -> handleLlmAction(llmPromptField, responseArea, llmSubmitButton, ocrCtrlClickButton));
-        ocrCtrlClickButton.setOnAction(event -> handleOcrAction(ocrField, responseArea, llmSubmitButton, ocrCtrlClickButton));
+        llmSubmitButton.setOnAction(
+                event -> handleLlmAction(llmPromptField, responseArea, llmSubmitButton, ocrCtrlClickButton,
+                        clickAllBlueLinksButton));
+        ocrCtrlClickButton
+                .setOnAction(event -> handleOcrAction(ocrField, responseArea, llmSubmitButton, ocrCtrlClickButton,
+                        clickAllBlueLinksButton));
+        clickAllBlueLinksButton
+                .setOnAction(event -> handleClickAllBlueLinksAction(responseArea, llmSubmitButton, ocrCtrlClickButton,
+                        clickAllBlueLinksButton));
 
         // --- Scene and Stage Setup ---
         Scene scene = new Scene(root, 600, 450);
@@ -84,6 +95,27 @@ public class JavaFxApplication extends Application {
 
         new Thread(() -> {
             try {
+                /**
+                 * Prompt validation
+                 * Task planner (Decide which methods should be addded in the plan and ask to
+                 * execute them)
+                 * Example: Open google chrome and search for 'Wordle'
+                 * 1. Open the google chrome application (There could be various ways to open an
+                 * app from
+                 * desktop, clicking the icon, finding it via start menu, finding it on task
+                 * bar) (Langchain Tool to index out all applications and open them)
+                 * 2. Make the mouse move to the search bar on chrome and search for wordle
+                 * 3. Click on the website for wordle
+                 * 
+                 * For step 2 and 3 we need LLM to plan out
+                 */
+
+                // Common steps to carry out after every step in the planner
+                // 1. Ocr ( What do we see on the screen ? Are we at the desired screen ?)
+                // 2. If not try to do chanegs in plan for alternate route on how to reach for
+                // desired screen ?
+                // 3. Move the mouse corresponding to the LLM response from step 2 (Open, Click,
+                // Type)
                 final String responseText = agentService.chatWithAgent(prompt);
 
                 Platform.runLater(() -> {
@@ -118,12 +150,37 @@ public class JavaFxApplication extends Application {
                 final int clickCount = ocrController.findAndCtrlClickAllByTextAndColor(textToFind, "#99c3ff");
 
                 Platform.runLater(() -> {
-                    responseArea.setText("Found and Ctrl+Clicked " + clickCount + " instance(s) of '" + textToFind + "'.");
+                    responseArea
+                            .setText("Found and Ctrl+Clicked " + clickCount + " instance(s) of '" + textToFind + "'.");
                     setButtonsDisabled(false, buttonsToDisable);
                 });
             } catch (Exception e) {
                 Platform.runLater(() -> {
                     responseArea.setText("Error during OCR operation: " + e.getMessage());
+                    setButtonsDisabled(false, buttonsToDisable);
+                });
+            }
+        }).start();
+    }
+
+    private void handleClickAllBlueLinksAction(TextArea responseArea, Button... buttonsToDisable) {
+        setButtonsDisabled(true, buttonsToDisable);
+        responseArea.setText("Searching screen for all blue links...");
+
+        // Blue link color - typical blue hyperlink color from the screenshot
+        final String BLUE_LINK_COLOR = "#5A9CFD";
+
+        new Thread(() -> {
+            try {
+                final int clickCount = ocrController.openAllGoogleSearchLinks(BLUE_LINK_COLOR);
+
+                Platform.runLater(() -> {
+                    responseArea.setText("Found and Ctrl+Clicked " + clickCount + " blue link(s).");
+                    setButtonsDisabled(false, buttonsToDisable);
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    responseArea.setText("Error during blue links detection: " + e.getMessage());
                     setButtonsDisabled(false, buttonsToDisable);
                 });
             }
