@@ -13,7 +13,6 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
-import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -28,37 +27,6 @@ public class OCRController {
 
     @Autowired
     private MouseMovement mouseMovement;
-
-    /**
-     * Finds a word on the screen and clicks the first instance found, regardless of
-     * confidence.
-     *
-     * @param textToFind The text of the element to find and click.
-     * @return true if an element was found and clicked, false otherwise.
-     */
-    public boolean findAndClickText(String textToFind) {
-        LOGGER.info("Attempting to find and click text: '" + textToFind + "'");
-        try {
-            String screenCapturePath = ScreenCapture.captureToFile();
-            BufferedImage image = ImageIO.read(new File(screenCapturePath));
-
-            Optional<OcrService.OcrResult> firstResult = ocrService.getWordsFromImage(image, textToFind)
-                    .stream()
-                    .findFirst();
-
-            if (firstResult.isEmpty()) {
-                LOGGER.warning("Could not find the text '" + textToFind + "' on the screen.");
-                return false;
-            }
-
-            return clickOcrResult(firstResult.get(), "MOVE_AND_CLICK");
-
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE,
-                    "An error occurred during the find-and-click operation for text: '" + textToFind + "'", e);
-            return false;
-        }
-    }
 
     /**
      * Finds all occurrences of text matching a specific color and performs a

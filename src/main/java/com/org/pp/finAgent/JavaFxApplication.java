@@ -1,6 +1,5 @@
 package com.org.pp.finAgent;
 
-import com.org.pp.finAgent.controller.OCRController;
 import com.org.pp.finAgent.service.AgentService;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -8,9 +7,9 @@ import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.Separator;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -18,15 +17,15 @@ import org.springframework.context.ConfigurableApplicationContext;
 
 public class JavaFxApplication extends Application {
     private ConfigurableApplicationContext applicationContext;
-    private OCRController ocrController;
     private AgentService agentService;
+    private String currentPlan = null;
+    private String currentPrompt = null;
 
     @Override
     public void init() {
         // Bootstrap the Spring Boot application context
         applicationContext = new SpringApplicationBuilder(FinAgentApplication.class).run();
         // Get the service beans from the context
-        this.ocrController = applicationContext.getBean(OCRController.class);
         this.agentService = applicationContext.getBean(AgentService.class);
     }
 
@@ -35,63 +34,105 @@ public class JavaFxApplication extends Application {
         // --- UI Components ---
         Label llmPromptLabel = new Label("LLM Command:");
         TextField llmPromptField = new TextField();
-        llmPromptField.setPromptText("e.g., 'Find and click the text invoice'");
-        Button llmSubmitButton = new Button("Submit to LLM");
+        llmPromptField.setPromptText("e.g., 'Open chrome and click on blue links'");
 
-        // --- New UI Components for OCR ---
-        Label ocrLabel = new Label("Text to Find on Screen:");
-        TextField ocrField = new TextField();
-        ocrField.setPromptText("e.g., 'invoice'");
-        Button ocrCtrlClickButton = new Button("Find & Ctrl+Click All");
+        Button generatePlanButton = new Button("Generate Plan");
+        Button executePlanButton = new Button("Execute Plan");
+        executePlanButton.setDisable(true); // Initially disabled until a plan is generated
 
-        // --- Button for clicking all blue links ---
-        Button clickAllBlueLinksButton = new Button("Click All Blue Links");
+        HBox buttonBox = new HBox(10, generatePlanButton, executePlanButton);
+
+        Label planLabel = new Label("Execution Plan:");
+        TextArea planArea = new TextArea();
+        planArea.setEditable(false);
+        planArea.setWrapText(true);
+        planArea.setPrefHeight(150);
+        planArea.setPromptText("Plan will appear here after clicking 'Generate Plan'");
 
         Label responseLabel = new Label("Response / Status:");
         TextArea responseArea = new TextArea();
         responseArea.setEditable(false);
         responseArea.setWrapText(true);
+        responseArea.setPrefHeight(150);
 
         // --- Layout ---
         VBox root = new VBox(10,
-                llmPromptLabel, llmPromptField, llmSubmitButton,
-                new Separator(), // Visually separate the two actions
-                ocrLabel, ocrField, ocrCtrlClickButton,
-                new Separator(),
-                clickAllBlueLinksButton,
-                new Separator(),
+                llmPromptLabel, llmPromptField, buttonBox,
+                planLabel, planArea,
                 responseLabel, responseArea);
         root.setPadding(new Insets(15));
 
         // --- Event Handling ---
-        llmSubmitButton.setDefaultButton(true);
+        generatePlanButton.setOnAction(event -> handleGeneratePlan(
+                llmPromptField, planArea, responseArea, generatePlanButton, executePlanButton));
 
-        llmSubmitButton.setOnAction(
-                event -> handleLlmAction(llmPromptField, responseArea, llmSubmitButton, ocrCtrlClickButton,
-                        clickAllBlueLinksButton));
-        ocrCtrlClickButton
-                .setOnAction(event -> handleOcrAction(ocrField, responseArea, llmSubmitButton, ocrCtrlClickButton,
-                        clickAllBlueLinksButton));
-        clickAllBlueLinksButton
-                .setOnAction(event -> handleClickAllBlueLinksAction(responseArea, llmSubmitButton, ocrCtrlClickButton,
-                        clickAllBlueLinksButton));
+        executePlanButton.setOnAction(event -> handleExecutePlan(
+                planArea, responseArea, generatePlanButton, executePlanButton));
 
         // --- Scene and Stage Setup ---
-        Scene scene = new Scene(root, 600, 450);
+        Scene scene = new Scene(root, 650, 550);
         stage.setTitle("FinAgent Control Panel");
         stage.setScene(scene);
         stage.show();
     }
 
-    private void handleLlmAction(TextField promptField, TextArea responseArea, Button... buttonsToDisable) {
+    private void handleGeneratePlan(TextField promptField, TextArea planArea, TextArea responseArea,
+            Button generateButton, Button executeButton) {
         String prompt = promptField.getText();
         if (prompt == null || prompt.isBlank()) {
             responseArea.setText("Please enter an LLM command.");
             return;
         }
 
-        setButtonsDisabled(true, buttonsToDisable);
-        responseArea.setText("Processing LLM command...");
+        generateButton.setDisable(true);
+        executeButton.setDisable(true);
+        planArea.setText("Generating plan...");
+        responseArea.setText("Waiting for plan generation...");
+
+        currentPrompt = prompt;
+
+        new Thread(() -> {
+            try {
+                // Create a planning prompt that asks the LLM to break down the task
+                String planningPrompt = "Create a step-by-step execution plan for the following task. " +
+                        "List each step clearly and concisely. Do not execute anything yet, just plan:\n\n" +
+                        "Task: " + prompt + "\n\n" +
+                        "Provide a numbered list of steps you would take to accomplish this task.";
+
+                final String plan = agentService.chatWithAgent(planningPrompt);
+                currentPlan = plan;
+
+                Platform.runLater(() -> {
+                    planArea.setText(plan);
+                    responseArea.setText("Plan generated successfully. Click 'Execute Plan' to proceed.");
+                    generateButton.setDisable(false);
+                    executeButton.setDisable(false); // Enable execute button once plan is ready
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    String errorMessage = "Error generating plan: " + e.getMessage();
+                    if (e.getCause() != null) {
+                        errorMessage += "\nCause: " + e.getCause().getMessage();
+                    }
+                    planArea.setText(errorMessage);
+                    responseArea.setText("Failed to generate plan. Please try again.");
+                    generateButton.setDisable(false);
+                    executeButton.setDisable(true);
+                });
+            }
+        }).start();
+    }
+
+    private void handleExecutePlan(TextArea planArea, TextArea responseArea,
+            Button generateButton, Button executeButton) {
+        if (currentPrompt == null || currentPlan == null) {
+            responseArea.setText("No plan available. Please generate a plan first.");
+            return;
+        }
+
+        generateButton.setDisable(true);
+        executeButton.setDisable(true);
+        responseArea.setText("Executing plan...");
 
         new Thread(() -> {
             try {
@@ -116,81 +157,27 @@ public class JavaFxApplication extends Application {
                 // desired screen ?
                 // 3. Move the mouse corresponding to the LLM response from step 2 (Open, Click,
                 // Type)
-                final String responseText = agentService.chatWithAgent(prompt);
+
+                // Execute the original prompt with the agent
+                final String responseText = agentService.chatWithAgent(currentPrompt);
 
                 Platform.runLater(() -> {
-                    responseArea.setText(responseText);
-                    setButtonsDisabled(false, buttonsToDisable);
+                    responseArea.setText("Execution Complete!\n\n" + responseText);
+                    generateButton.setDisable(false);
+                    executeButton.setDisable(false);
                 });
             } catch (Exception e) {
                 Platform.runLater(() -> {
-                    String errorMessage = "Error during LLM processing: " + e.getMessage();
+                    String errorMessage = "Error during execution: " + e.getMessage();
                     if (e.getCause() != null) {
                         errorMessage += "\nCause: " + e.getCause().getMessage();
                     }
                     responseArea.setText(errorMessage);
-                    setButtonsDisabled(false, buttonsToDisable);
+                    generateButton.setDisable(false);
+                    executeButton.setDisable(false);
                 });
             }
         }).start();
-    }
-
-    private void handleOcrAction(TextField ocrField, TextArea responseArea, Button... buttonsToDisable) {
-        String textToFind = ocrField.getText();
-        if (textToFind == null || textToFind.isBlank()) {
-            responseArea.setText("Please enter text to find for the OCR action.");
-            return;
-        }
-
-        setButtonsDisabled(true, buttonsToDisable);
-        responseArea.setText("Searching screen for '" + textToFind + "'...");
-
-        new Thread(() -> {
-            try {
-                final int clickCount = ocrController.findAndCtrlClickAllByTextAndColor(textToFind, "#99c3ff");
-
-                Platform.runLater(() -> {
-                    responseArea
-                            .setText("Found and Ctrl+Clicked " + clickCount + " instance(s) of '" + textToFind + "'.");
-                    setButtonsDisabled(false, buttonsToDisable);
-                });
-            } catch (Exception e) {
-                Platform.runLater(() -> {
-                    responseArea.setText("Error during OCR operation: " + e.getMessage());
-                    setButtonsDisabled(false, buttonsToDisable);
-                });
-            }
-        }).start();
-    }
-
-    private void handleClickAllBlueLinksAction(TextArea responseArea, Button... buttonsToDisable) {
-        setButtonsDisabled(true, buttonsToDisable);
-        responseArea.setText("Searching screen for all blue links...");
-
-        // Blue link color - typical blue hyperlink color from the screenshot
-        final String BLUE_LINK_COLOR = "#5A9CFD";
-
-        new Thread(() -> {
-            try {
-                final int clickCount = ocrController.openAllGoogleSearchLinks(BLUE_LINK_COLOR);
-
-                Platform.runLater(() -> {
-                    responseArea.setText("Found and Ctrl+Clicked " + clickCount + " blue link(s).");
-                    setButtonsDisabled(false, buttonsToDisable);
-                });
-            } catch (Exception e) {
-                Platform.runLater(() -> {
-                    responseArea.setText("Error during blue links detection: " + e.getMessage());
-                    setButtonsDisabled(false, buttonsToDisable);
-                });
-            }
-        }).start();
-    }
-
-    private void setButtonsDisabled(boolean disabled, Button... buttons) {
-        for (Button button : buttons) {
-            button.setDisable(disabled);
-        }
     }
 
     @Override

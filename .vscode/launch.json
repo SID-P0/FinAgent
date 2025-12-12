@@ -3,6 +3,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "FinAgentApplication",
+            "request": "launch",
+            "mainClass": "com.org.pp.finAgent.FinAgentApplication",
+            "projectName": "finAgent"
+        },
+        {
+            "type": "java",
             "name": "Run FinAgent",
             "request": "launch",
             "mainClass": "com.org.pp.finAgent.FinAgentApplication",
