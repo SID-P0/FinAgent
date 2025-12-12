@@ -3,3 +3,4 @@ src/main/resources/secrets.properties
 /build
 /.gradle
 .idea
+/bin
