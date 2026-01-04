@@ -6,8 +6,11 @@ import com.org.pp.finAgent.agent.tools.ChromeTools;
 import com.org.pp.finAgent.automation.KeyboardMovement;
 import com.org.pp.finAgent.configuration.GeminiConfig;
 import com.org.pp.finAgent.controller.OCRController;
+
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
+import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.service.AiServices;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
@@ -33,9 +36,18 @@ public class AgentService {
 
     @PostConstruct
     private void initializeAgent() {
-        ChatModel model = dev.langchain4j.model.googleai.GoogleAiGeminiChatModel.builder()
-                .apiKey(geminiConfig.getApiKey())
-                .modelName(MODEL_NAME)
+        // ChatModel model = GoogleAiGeminiChatModel.builder()
+        // .apiKey(geminiConfig.getApiKey())
+        // .modelName(MODEL_NAME)
+        // .build();
+        ChatModel model = OllamaChatModel.builder()
+                .baseUrl("http://localhost:11434")
+                .modelName("qwen2.5:7b-instruct")
+                .temperature(0.4)
+                .topP(0.9)
+                .topK(40)
+                .repeatPenalty(1.1)
+                .numPredict(256)
                 .build();
 
         AgentTools tools = new AgentTools(this.ocrController, this.keyboardMovement);
