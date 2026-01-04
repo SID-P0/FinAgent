@@ -29,61 +29,39 @@ public class OCRController {
     private MouseMovement mouseMovement;
 
     /**
-     * Finds all occurrences of text matching a specific color and performs a
-     * Ctrl+Click on each one.
-     * It uses fuzzy matching for the text (e.g., "xyz" will match "xyz_asd").
+     * Finds the first occurrence of text on screen and performs a single click on
+     * it.
+     * This is useful for clicking navigation elements, buttons, or menu items.
      *
-     * @param textToFind The text of the elements to find and multi-select.
-     * @param hexColor   The hex color string (e.g., "#99c3ff") of the text to find.
-     * @return The number of items that were successfully clicked.
+     * @param textToFind The text to find and click on.
+     * @return true if the text was found and clicked, false otherwise.
      */
-    public int findAndCtrlClickAllByTextAndColor(String textToFind, String hexColor) {
-        LOGGER.info(
-                "Attempting to find and Ctrl+Click all occurrences of: '" + textToFind + "' with color " + hexColor);
-        int clickCount = 0;
+    public boolean findAndClickText(String textToFind) {
+        LOGGER.info("Attempting to find and click on text: '" + textToFind + "'");
         try {
             String screenCapturePath = ScreenCapture.captureToFile();
             BufferedImage image = ImageIO.read(new File(screenCapturePath));
 
-            // This now uses the fuzzy matching logic from OcrService
+            // Use fuzzy matching to find the text
             List<OcrService.OcrResult> results = ocrService.getWordsFromImage(image, textToFind);
 
             if (results.isEmpty()) {
                 LOGGER.warning("Could not find any occurrences of the text '" + textToFind + "' on the screen.");
-                return 0;
+                return false;
             }
 
-            Color targetColor = Color.decode(hexColor);
-
-            List<OcrService.OcrResult> filteredResults = results.stream()
-                    .filter(result -> isWordColor(image, result, targetColor, DEFAULT_COLOR_TOLERANCE))
-                    .collect(Collectors.toList());
-
-            if (filteredResults.isEmpty()) {
-                LOGGER.warning("Found text '" + textToFind + "', but none matched the color " + hexColor);
-                return 0;
-            }
-
-            LOGGER.info("Found " + filteredResults.size()
-                    + " occurrences with matching color. Proceeding to Ctrl+Click each one.");
-
-            for (OcrService.OcrResult result : filteredResults) {
-                if (clickOcrResult(result, "MOVE_AND_CTRL_CLICK")) {
-                    clickCount++;
-                    Thread.sleep(250); // A short pause between clicks is good for reliability
-                }
-            }
+            // Click on the first result found
+            OcrService.OcrResult firstResult = results.get(0);
+            LOGGER.info("Found '" + textToFind + "'. Clicking on the first occurrence.");
+            return clickOcrResult(firstResult, "MOVE_AND_CLICK");
 
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "An error occurred reading the screen capture image.", e);
-        } catch (InterruptedException e) {
-            LOGGER.log(Level.WARNING, "The click operation was interrupted.", e);
-            Thread.currentThread().interrupt(); // Preserve the interrupted status
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE,
-                    "An error occurred during the find-and-Ctrl+Click operation for text: '" + textToFind + "'", e);
+                    "An error occurred during the find-and-click operation for text: '" + textToFind + "'", e);
         }
-        return clickCount;
+        return false;
     }
 
     /**

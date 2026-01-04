@@ -9,16 +9,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.stereotype.Component;
+
+@Component
 public class AgentTools {
-    private final OCRController ocrController;
     private final KeyboardMovement keyboardMovement;
     private final ApplicationScanner applicationScanner;
     private final Map<String, String> applicationCache;
     private final boolean isWindows;
     private final boolean isMac;
 
-    public AgentTools(OCRController ocrController, KeyboardMovement keyboardMovement) {
-        this.ocrController = ocrController;
+    public AgentTools(KeyboardMovement keyboardMovement) {
         this.keyboardMovement = keyboardMovement;
         this.applicationScanner = new ApplicationScanner();
         String os = System.getProperty("os.name").toLowerCase();
@@ -28,34 +29,14 @@ public class AgentTools {
         this.applicationCache = applicationScanner.scanInstalledApplications();
     }
 
-    @Tool("Finds the specified text on the screen and control-clicks on it")
-    public String findAndClickText(String textToFind) {
+    /**
+     * Waits for 1 second to allow the window to refresh after an action.
+     */
+    private void waitForWindowRefresh() {
         try {
-            // Using a default color, as the agent won't know about color codes
-            int count = ocrController.findAndCtrlClickAllByTextAndColor(textToFind, "#99c3ff");
-            if (count > 0) {
-                return "Successfully found and clicked " + count + " instance(s) of '" + textToFind + "'.";
-            } else {
-                return "Could not find any instances of '" + textToFind + "' on the screen.";
-            }
-        } catch (Exception e) {
-            return "Error during OCR operation: " + e.getMessage();
-        }
-    }
-
-    @Tool("Finds and Ctrl+clicks all blue hyperlinks visible on the screen")
-    public String clickAllBlueLinks() {
-        // Blue link color - typical blue hyperlink color
-        final String BLUE_LINK_COLOR = "#5A9CFD";
-        try {
-            int count = ocrController.openAllGoogleSearchLinks(BLUE_LINK_COLOR);
-            if (count > 0) {
-                return "Successfully found and Ctrl+clicked " + count + " blue link(s).";
-            } else {
-                return "Could not find any blue links on the screen.";
-            }
-        } catch (Exception e) {
-            return "Error during blue links detection: " + e.getMessage();
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -101,6 +82,8 @@ public class AgentTools {
 
             // Launch the application
             ProcessBuilder pb;
+            boolean isChrome = matchedApp.toLowerCase().contains("chrome");
+
             if (isWindows) {
                 if (matchedPath.endsWith(".lnk")) {
                     // Launch shortcut using cmd
@@ -116,6 +99,18 @@ public class AgentTools {
             }
 
             pb.start();
+
+            // Wait for the application to open
+            waitForWindowRefresh();
+
+            // If it's Chrome, open incognito window using Ctrl+Shift+N
+            if (isChrome) {
+                Thread.sleep(500); // Extra wait for Chrome to fully load
+                keyboardMovement.pressKeyCombination(new String[] { isMac ? "CMD" : "CTRL", "SHIFT", "N" });
+                waitForWindowRefresh();
+                return "Successfully launched '" + matchedApp + "' and opened incognito window.";
+            }
+
             return "Successfully launched '" + matchedApp + "'.";
         } catch (Exception e) {
             return "Error launching application: " + e.getMessage();
@@ -129,6 +124,7 @@ public class AgentTools {
                 return "Please provide text to type.";
             }
             keyboardMovement.typeText(text);
+            waitForWindowRefresh();
             return "Successfully typed: '" + text + "'";
         } catch (Exception e) {
             return "Error typing text: " + e.getMessage();
@@ -142,6 +138,7 @@ public class AgentTools {
                 return "Please provide a key to press.";
             }
             keyboardMovement.pressKey(key);
+            waitForWindowRefresh();
             return "Successfully pressed key: " + key;
         } catch (Exception e) {
             return "Error pressing key: " + e.getMessage();
@@ -156,6 +153,7 @@ public class AgentTools {
             }
             String[] keys = combination.split("\\+");
             keyboardMovement.pressKeyCombination(keys);
+            waitForWindowRefresh();
             return "Successfully pressed key combination: " + combination;
         } catch (Exception e) {
             return "Error pressing key combination: " + e.getMessage();

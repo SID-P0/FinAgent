@@ -93,6 +93,8 @@ public class JavaFxApplication extends Application {
 
         new Thread(() -> {
             try {
+                // Clear memory before generating a new plan to start fresh
+                agentService.clearMemory();
                 // Create a planning prompt that asks the LLM to break down the task
                 String planningPrompt = "Create a step-by-step execution plan for the following task. " +
                         "List each step clearly and concisely. Do not execute anything yet, just plan:\n\n" +

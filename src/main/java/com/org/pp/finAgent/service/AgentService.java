@@ -21,16 +21,15 @@ public class AgentService {
     private static final String MODEL_NAME = "gemini-2.5-flash";
 
     private final GeminiConfig geminiConfig;
-    private final OCRController ocrController;
-    private final KeyboardMovement keyboardMovement;
     private final ChromeTools chromeTools;
+    private final AgentTools agentTools;
     private Assistant assistant;
+    private MessageWindowChatMemory chatMemory;
 
     public AgentService(GeminiConfig geminiConfig, OCRController ocrController,
-            KeyboardMovement keyboardMovement, ChromeTools chromeTools) {
+            KeyboardMovement keyboardMovement, ChromeTools chromeTools, AgentTools agentTools) {
         this.geminiConfig = geminiConfig;
-        this.ocrController = ocrController;
-        this.keyboardMovement = keyboardMovement;
+        this.agentTools = agentTools;
         this.chromeTools = chromeTools;
     }
 
@@ -42,21 +41,29 @@ public class AgentService {
         // .build();
         ChatModel model = OllamaChatModel.builder()
                 .baseUrl("http://localhost:11434")
-                .modelName("qwen2.5:7b-instruct")
-                .temperature(0.4)
-                .topP(0.9)
-                .topK(40)
-                .repeatPenalty(1.1)
-                .numPredict(256)
+                .modelName("qwen2.5:7b")
                 .build();
 
-        AgentTools tools = new AgentTools(this.ocrController, this.keyboardMovement);
+        // AgentTools tools = new AgentTools(this.keyboardMovement);
+
+        // Store reference to memory so we can clear it later
+        chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
         assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
-                .tools(tools, chromeTools) // Register both AgentTools and ChromeTools
-                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+                .tools(agentTools, chromeTools) // Register both AgentTools and ChromeTools
+                .chatMemory(chatMemory)
                 .build();
+    }
+
+    /**
+     * Clears the chat memory/context window.
+     * Call this before generating a new plan to start fresh.
+     */
+    public void clearMemory() {
+        if (chatMemory != null) {
+            chatMemory.clear();
+        }
     }
 
     /**
