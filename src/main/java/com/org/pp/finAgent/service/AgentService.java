@@ -47,7 +47,7 @@ public class AgentService {
         // AgentTools tools = new AgentTools(this.keyboardMovement);
 
         // Store reference to memory so we can clear it later
-        chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        chatMemory = MessageWindowChatMemory.withMaxMessages(6);
 
         assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
@@ -76,6 +76,9 @@ public class AgentService {
         if (assistant == null) {
             throw new IllegalStateException("Agent has not been initialized. Check the configuration.");
         }
+        // Clear previous context so each prompt starts fresh
+        // This prevents context overflow on small local models
+        clearMemory();
         return assistant.chat(prompt);
     }
 }
