@@ -45,9 +45,8 @@ public class AgentService {
                 .build();
 
         // AgentTools tools = new AgentTools(this.keyboardMovement);
-
         // Store reference to memory so we can clear it later
-        chatMemory = MessageWindowChatMemory.withMaxMessages(6);
+        chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
         assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)

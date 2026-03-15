@@ -6,6 +6,8 @@ import net.sourceforge.tess4j.ITessAPI;
 import net.sourceforge.tess4j.ITesseract;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.Word;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.awt.Rectangle;
@@ -17,12 +19,30 @@ import java.util.stream.Collectors;
 @Service
 public class OcrService {
 
+    private static final Logger log = LoggerFactory.getLogger(OcrService.class);
+
     private final ITesseract tesseract;
 
     public OcrService(TesseractConfig tesseractConfig) {
         this.tesseract = new Tesseract();
         this.tesseract.setDatapath(tesseractConfig.getTessDataPath());
         this.tesseract.setLanguage("eng");
+
+        // Eagerly trigger native library loading so errors surface at startup
+        try {
+            BufferedImage testImg = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
+            tesseract.getWords(testImg, ITessAPI.TessPageIteratorLevel.RIL_WORD);
+            log.info("Tesseract OCR initialized successfully (native library loaded).");
+        } catch (UnsatisfiedLinkError e) {
+            log.error("Failed to load Tesseract native library: {}", e.getMessage(), e);
+            throw new OcrProcessingException("Tesseract OCR native library not found. "
+                    + "Ensure 'tesseract' is installed (brew install tesseract) and "
+                    + "jna.library.path points to the lib directory.", e);
+        } catch (Exception e) {
+            // Non-fatal: Tesseract may throw on a trivial test image, but the
+            // native library was still loaded successfully during the attempt.
+            log.info("Tesseract OCR native library loaded (test OCR returned: {}).", e.getMessage());
+        }
     }
 
     /**

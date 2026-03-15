@@ -50,7 +50,7 @@ public class ChromeTools {
     @Tool("Finds and Ctrl+clicks all blue hyperlinks visible on the screen")
     public String clickAllBlueLinks() {
         // Blue link color - typical blue hyperlink color
-        final String BLUE_LINK_COLOR = "#5A9CFD";
+        final String BLUE_LINK_COLOR = "#99C3FF";
         try {
             int count = ocrController.openAllGoogleSearchLinks(BLUE_LINK_COLOR);
             waitForWindowRefresh();
