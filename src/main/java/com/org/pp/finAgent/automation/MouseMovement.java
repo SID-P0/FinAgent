@@ -156,4 +156,15 @@ public class MouseMovement {
         }
         return true;
     }
+
+    /**
+     * Simulates the mouse scroll wheel.
+     * @param wheelAmt the number of "notches" to move the mouse wheel.
+     *                 Negative values generally move the wheel up / away from the user.
+     *                 Positive values generally move the wheel down / towards the user.
+     */
+    public void scroll(int wheelAmt) {
+        LOGGER.info("Scrolling wheel by amount: " + wheelAmt);
+        robot.mouseWheel(wheelAmt);
+    }
 }

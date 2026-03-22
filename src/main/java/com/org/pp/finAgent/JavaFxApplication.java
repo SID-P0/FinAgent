@@ -93,15 +93,8 @@ public class JavaFxApplication extends Application {
 
         new Thread(() -> {
             try {
-                // Clear memory before generating a new plan to start fresh
-                agentService.clearMemory();
                 // Create a planning prompt that asks the LLM to break down the task
-                String planningPrompt = "Create a step-by-step execution plan for the following task. " +
-                        "List each step clearly and concisely. Do not execute anything yet, just plan:\n\n" +
-                        "Task: " + prompt + "\n\n" +
-                        "Provide a numbered list of steps you would take to accomplish this task.";
-
-                final String plan = agentService.chatWithAgent(planningPrompt);
+                final String plan = agentService.generatePlan(prompt);
                 currentPlan = plan;
 
                 Platform.runLater(() -> {
@@ -161,7 +154,7 @@ public class JavaFxApplication extends Application {
                 // Type)
 
                 // Execute the original prompt with the agent
-                final String responseText = agentService.chatWithAgent(currentPrompt);
+                final String responseText = agentService.executePlan(currentPrompt, currentPlan);
 
                 Platform.runLater(() -> {
                     responseArea.setText("Execution Complete!\n\n" + responseText);

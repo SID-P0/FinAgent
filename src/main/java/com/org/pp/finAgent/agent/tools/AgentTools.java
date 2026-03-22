@@ -14,19 +14,30 @@ import org.springframework.stereotype.Component;
 @Component
 public class AgentTools {
     private final KeyboardMovement keyboardMovement;
+    private final com.org.pp.finAgent.automation.MouseMovement mouseMovement;
     private final ApplicationScanner applicationScanner;
     private final Map<String, String> applicationCache;
     private final boolean isWindows;
     private final boolean isMac;
+    private int currentScrollState = 0;
 
-    public AgentTools(KeyboardMovement keyboardMovement) {
+    public AgentTools(KeyboardMovement keyboardMovement, com.org.pp.finAgent.automation.MouseMovement mouseMovement) {
         this.keyboardMovement = keyboardMovement;
+        this.mouseMovement = mouseMovement;
         this.applicationScanner = new ApplicationScanner();
         String os = System.getProperty("os.name").toLowerCase();
         this.isWindows = os.contains("win");
         this.isMac = os.contains("mac");
         // Pre-populate the application cache
         this.applicationCache = applicationScanner.scanInstalledApplications();
+    }
+
+    /**
+     * Resets the absolute scroll state tracker back to 0.
+     * Called by AgentService when starting a new plan generation or execution loop.
+     */
+    public void resetScrollState() {
+        this.currentScrollState = 0;
     }
 
     /**
@@ -157,6 +168,41 @@ public class AgentTools {
             return "Successfully pressed key combination: " + combination;
         } catch (Exception e) {
             return "Error pressing key combination: " + e.getMessage();
+        }
+    }
+
+    @Tool("Scrolls the page down to an absolute percentage (e.g., 100 for the first page down, 200 for the next, 300...). This tracks absolute position. Use negative numbers to scroll up.")
+    public String scrollPercentage(int targetPercentage) {
+        try {
+            // If they request the exact same spot, do nothing but don't error.
+            if (targetPercentage == currentScrollState) {
+                return "Already at scroll position " + targetPercentage + "%. No action taken.";
+            }
+            
+            // Calculate the relative difference we need to physically scroll
+            int relativeDifference = targetPercentage - currentScrollState;
+            
+            // Assume 1 full viewport "page down" is roughly 12 native scroll wheel notches
+            // We use 12.0 for float division
+            int wheelAmount = Math.round((relativeDifference / 100.0f) * 12);
+            
+            // Protect against very small percentages rounding to 0, if non-zero delta is requested
+            if (wheelAmount == 0) {
+                wheelAmount = (relativeDifference > 0) ? 1 : -1;
+            }
+
+            // Execute the physical scroll
+            mouseMovement.scroll(wheelAmount);
+            
+            // Update the absolute state tracker
+            currentScrollState = targetPercentage;
+            
+            waitForWindowRefresh();
+            
+            String direction = relativeDifference > 0 ? "down" : "up";
+            return "Successfully scrolled " + direction + " to absolute position " + targetPercentage + "%.";
+        } catch (Exception e) {
+            return "Error while scrolling: " + e.getMessage();
         }
     }
 }
